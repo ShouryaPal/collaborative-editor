@@ -7,15 +7,17 @@ import {
   shift,
   size,
   useFloating,
-} from '@floating-ui/react-dom';
-import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
-import { OPEN_FLOATING_COMPOSER_COMMAND } from '@liveblocks/react-lexical';
-import type { LexicalEditor, LexicalNode } from 'lexical';
-import { $getSelection, $isRangeSelection, $isTextNode } from 'lexical';
-import Image from 'next/image';
-import { useEffect, useLayoutEffect, useState } from 'react';
-import * as React from 'react';
-import { createPortal } from 'react-dom';
+} from "@floating-ui/react-dom";
+import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
+import { OPEN_FLOATING_COMPOSER_COMMAND } from "@liveblocks/react-lexical";
+import type { LexicalEditor, LexicalNode } from "lexical";
+import { $getSelection, $isRangeSelection, $isTextNode } from "lexical";
+import Image from "next/image";
+import { useEffect, useLayoutEffect, useState } from "react";
+import * as React from "react";
+import { createPortal } from "react-dom";
+import { $createHeadingNode, $isHeadingNode } from "@lexical/rich-text";
+import { $setBlocksType } from "@lexical/selection";
 
 export default function FloatingToolbar() {
   const [editor] = useLexicalComposerContext();
@@ -26,7 +28,7 @@ export default function FloatingToolbar() {
     editor.registerUpdateListener(({ tags }) => {
       return editor.getEditorState().read(() => {
         // Ignore selection updates related to collaboration
-        if (tags.has('collaboration')) return;
+        if (tags.has("collaboration")) return;
 
         const selection = $getSelection();
         if (!$isRangeSelection(selection) || selection.isCollapsed()) {
@@ -75,8 +77,8 @@ function Toolbar({
     x,
     y,
   } = useFloating({
-    strategy: 'fixed',
-    placement: 'bottom',
+    strategy: "fixed",
+    placement: "bottom",
     middleware: [
       flip({ padding, crossAxis: false }),
       offset(10),
@@ -97,6 +99,15 @@ function Toolbar({
     });
   }, [setReference, range]);
 
+  const formatHeading = (headingTag: "h1" | "h2" | "h3") => {
+    editor.update(() => {
+      const selection = $getSelection();
+      if ($isRangeSelection(selection)) {
+        $setBlocksType(selection, () => $createHeadingNode(headingTag));
+      }
+    });
+  };
+
   return createPortal(
     <div
       ref={setFloating}
@@ -105,10 +116,28 @@ function Toolbar({
         top: 0,
         left: 0,
         transform: `translate3d(${Math.round(x)}px, ${Math.round(y)}px, 0)`,
-        minWidth: 'max-content',
+        minWidth: "max-content",
       }}
     >
       <div className="floating-toolbar">
+        <button
+          onClick={() => formatHeading("h1")}
+          className="floating-toolbar-btn"
+        >
+          H1
+        </button>
+        <button
+          onClick={() => formatHeading("h2")}
+          className="floating-toolbar-btn"
+        >
+          H2
+        </button>
+        <button
+          onClick={() => formatHeading("h3")}
+          className="floating-toolbar-btn"
+        >
+          H3
+        </button>
         <button
           onClick={() => {
             const isOpen = editor.dispatchCommand(
@@ -134,29 +163,6 @@ function Toolbar({
   );
 }
 
-/**
- * MIT License
- * Copyright (c) Meta Platforms, Inc. and affiliates.
-
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- * 
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- * 
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
-
 function getDOMTextNode(element: Node | null): Text | null {
   let node = element;
 
@@ -175,21 +181,12 @@ function getDOMIndexWithinParent(node: ChildNode): [ParentNode, number] {
   const parent = node.parentNode;
 
   if (parent === null) {
-    throw new Error('Should never happen');
+    throw new Error("Should never happen");
   }
 
   return [parent, Array.from(parent.childNodes).indexOf(node)];
 }
 
-/**
- * Creates a selection range for the DOM.
- * @param editor - The lexical editor.
- * @param anchorNode - The anchor node of a selection.
- * @param _anchorOffset - The amount of space offset from the anchor to the focus.
- * @param focusNode - The current focus.
- * @param _focusOffset - The amount of space offset from the focus to the anchor.
- * @returns The range of selection for the DOM that was created.
- */
 export function createDOMRange(
   editor: LexicalEditor,
   anchorNode: LexicalNode,
@@ -222,11 +219,11 @@ export function createDOMRange(
     return null;
   }
 
-  if (anchorDOM.nodeName === 'BR') {
+  if (anchorDOM.nodeName === "BR") {
     [anchorDOM, anchorOffset] = getDOMIndexWithinParent(anchorDOM as ChildNode);
   }
 
-  if (focusDOM.nodeName === 'BR') {
+  if (focusDOM.nodeName === "BR") {
     [focusDOM, focusOffset] = getDOMIndexWithinParent(focusDOM as ChildNode);
   }
 
@@ -235,7 +232,7 @@ export function createDOMRange(
   if (
     anchorDOM === focusDOM &&
     firstChild !== null &&
-    firstChild.nodeName === 'BR' &&
+    firstChild.nodeName === "BR" &&
     anchorOffset === 0 &&
     focusOffset === 0
   ) {
